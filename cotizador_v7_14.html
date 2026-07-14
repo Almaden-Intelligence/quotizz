@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotizador Pro Build</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1f2328;--muted:#6b7280;--muted2:#9ca3af;
+  --surface:#f7f8f9;--white:#fff;--border:#e3e6e8;--border2:#cfd4d8;
+  --accent:#2563eb;--accent-light:#eff4ff;
+  --danger:#b42318;--danger-light:#fef2f2;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--surface);color:var(--ink);font-size:14px}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:208px;min-width:208px;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.sidebar-logo{padding:1.25rem 1rem 1rem;border-bottom:1px solid var(--border)}
+.logo-name{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:2px;letter-spacing:-.2px}
+.logo-tag{font-size:11px;color:var(--muted)}
+.nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2);padding:.75rem 1rem .25rem;margin-top:.25rem}
+.nav-item{display:flex;align-items:center;gap:8px;padding:9px 1rem;cursor:pointer;font-size:13px;color:var(--muted);transition:all .1s;border-left:3px solid transparent}
+.nav-item:hover{background:var(--surface);color:var(--ink)}
+.nav-item.active{background:var(--accent-light);color:var(--accent);font-weight:600;border-left-color:var(--accent)}
+.nav-icon{width:18px;text-align:center;font-style:normal;font-size:15px}
+.main{flex:1;overflow:hidden;background:var(--surface);display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.5rem;background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;min-height:56px;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-title{font-size:15px;font-weight:700}
+.btn-back{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:18px;line-height:1;color:var(--muted);transition:all .1s}
+.btn-back:hover{background:var(--surface);color:var(--ink);border-color:var(--border2)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--white);color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;transition:all .1s;white-space:nowrap}
+.btn:hover{background:var(--surface);border-color:var(--border2)}
+.btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn-primary:hover{background:#000}
+.btn-sm{padding:4px 8px;font-size:12px}
+.btn-danger{color:var(--danger);border-color:#f3b4ad;background:var(--white)}
+.btn-danger:hover{background:var(--danger-light)}
+.content{padding:1.5rem;overflow-y:auto;flex:1}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:1rem}
+.stat-label{font-size:12px;color:var(--muted);margin-bottom:4px}
+.stat-value{font-size:24px;font-weight:700;letter-spacing:-.5px}
+.table-card{background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.table-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border)}
+.table-title{font-size:14px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;padding:.55rem 1.25rem;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;background:var(--surface);border-bottom:1px solid var(--border)}
+tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface)}
+tbody td{padding:.7rem 1.25rem;vertical-align:middle}
+.cot-id{color:var(--accent);font-weight:700;font-size:12px}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-draft{background:#f3f4f6;color:#6b7280}
+.badge-sent{background:#eff6ff;color:#1d4ed8}
+.badge-approved{background:#f0fdf4;color:#15803d}
+.badge-rejected{background:#fff1f2;color:#be123c}
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+.screen.active{display:flex}
+.form-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:1.5rem;margin-bottom:1rem}
+.form-card-title{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg.full{grid-column:1/-1}
+label{font-size:12px;color:var(--muted);font-weight:600}
+input,select,textarea{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--white);color:var(--ink);font-family:inherit;font-size:13px;transition:border .1s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+input[readonly]{background:var(--surface);color:var(--muted);cursor:default}
+textarea{resize:vertical;min-height:60px}
+.sections-wrap{display:flex;flex-direction:column;gap:14px}
+.section-block{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.section-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--border)}
+.section-num{width:24px;height:24px;border-radius:6px;background:var(--ink);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.section-name-input{border:none;background:transparent;font-weight:700;font-size:13.5px;padding:4px 2px;flex:1}
+.section-name-input:focus{outline:none;background:var(--white);border:1px solid var(--border);border-radius:6px;padding:3px 7px}
+.section-del{background:none;border:none;cursor:pointer;color:var(--muted2);font-size:15px;padding:2px 6px}
+.section-del:hover{color:var(--danger)}
+.items-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.items-tbl th{text-align:left;padding:.45rem 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)}
+.items-tbl td{padding:5px 6px;vertical-align:middle;border-bottom:1px solid var(--border)}
+.items-tbl tr:last-child td{border-bottom:none}
+.items-tbl input,.items-tbl select{padding:5px 7px;font-size:13px;border-color:transparent;background:transparent}
+.items-tbl input:hover,.items-tbl select:hover{border-color:var(--border)}
+.items-tbl input:focus,.items-tbl select:focus{border-color:var(--accent);background:var(--white)}
+.item-del{background:none;border:none;cursor:pointer;color:var(--muted2);font-size:14px}
+.item-del:hover{color:var(--danger)}
+.add-item-row{padding:6px 12px;border-top:1px dashed var(--border)}
+.section-subtotal{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:7px 12px;background:var(--surface);border-top:1px solid var(--border)}
+.section-subtotal-label{font-size:11.5px;color:var(--muted)}
+.section-subtotal-val{font-size:13px;font-weight:700;color:var(--ink);min-width:90px;text-align:right}
+.add-item-link{font-size:12px;color:var(--accent);cursor:pointer;background:none;border:none;font-family:inherit;display:inline-flex;align-items:center;gap:4px}
+.add-item-link:hover{text-decoration:underline}
+.totals-area{display:flex;flex-direction:column;align-items:flex-end;gap:5px;padding-top:1rem;margin-top:1rem;border-top:1px solid var(--border)}
+.trow{display:flex;gap:1.5rem;font-size:13px;min-width:300px}
+.trow .tlabel{color:var(--muted);flex:1;text-align:right}
+.trow .tval{min-width:110px;text-align:right;font-weight:600}
+.trow.discount .tval{color:var(--danger)}
+.trow.neto .tlabel,.trow.neto .tval{font-weight:700;color:var(--ink);border-top:1px solid var(--border);padding-top:5px;margin-top:2px}
+.trow.grand{border-top:2px solid var(--ink);padding-top:8px;margin-top:4px}
+.trow.grand .tlabel,.trow.grand .tval{font-size:16px;font-weight:800;color:var(--ink)}
+.logo-zone{border:2px dashed var(--border2);border-radius:8px;padding:1.5rem;text-align:center;cursor:pointer;color:var(--muted);font-size:13px;transition:background .1s}
+.logo-zone:hover{background:var(--surface)}
+#logoPreview{max-height:64px;margin-top:.75rem;border-radius:6px}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--muted)}
+#toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-name" id="sidebarName">Pro Build</div>
+      <div class="logo-tag" id="sidebarGiro">Cotizaciones</div>
+    </div>
+    <div class="nav-section">Menú</div>
+    <div class="nav-item active" id="nav-dashboard" onclick="goto('dashboard')"><span class="nav-icon">⊞</span> Dashboard</div>
+    <div class="nav-item" id="nav-new" onclick="startNew()"><span class="nav-icon">＋</span> Nueva cotización</div>
+    <div class="nav-item" id="nav-history" onclick="goto('history')"><span class="nav-icon">☰</span> Historial</div>
+    <div class="nav-section">Admin</div>
+    <div class="nav-item" id="nav-settings" onclick="goto('settings')"><span class="nav-icon">⚙</span> Configuración</div>
+  </div>
+  <div class="main">
+    <div class="screen active" id="screen-dashboard">
+      <div class="topbar">
+        <div class="topbar-title">Dashboard</div>
+        <div class="actions"><button class="btn btn-primary" onclick="startNew()">＋ Nueva cotización</button></div>
+      </div>
+      <div class="content">
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="table-card">
+          <div class="table-header">
+            <span class="table-title">Cotizaciones recientes</span>
+            <button class="btn btn-sm" onclick="goto('history')">Ver historial →</button>
+          </div>
+          <table>
+            <thead><tr><th>#</th><th>Cliente</th><th>Proyecto</th><th>Fecha</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="dashTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-history">
+      <div class="topbar">
+        <div class="topbar-title">Historial</div>
+        <div class="actions"><button class="btn btn-primary" onclick="startNew()">＋ Nueva cotización</button></div>
+      </div>
+      <div class="content">
+        <div class="table-card">
+          <div class="table-header"><span class="table-title">Todas las cotizaciones</span></div>
+          <table>
+            <thead><tr><th>#</th><th>Formato</th><th>Cliente</th><th>Proyecto</th><th>Fecha</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="histTbody"></tbody>
+          </table>
+          <div id="histEmpty" class="empty-state" style="display:none">
+            Sin cotizaciones. <a onclick="startNew()" style="color:var(--accent);cursor:pointer">Crea la primera.</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-new">
+      <div class="topbar">
+        <div class="topbar-left">
+          <button class="btn-back" onclick="goto('dashboard')" title="Volver">←</button>
+          <span class="topbar-title" id="formTitle">Nueva cotización</span>
+        </div>
+        <div class="actions">
+          <button class="btn" onclick="saveDraft()">💾 Guardar borrador</button>
+          <button class="btn btn-primary" onclick="doGeneratePDF()">📄 Generar PDF</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="form-card">
+          <div class="form-card-title">Información de la cotización</div>
+          <div class="form-grid" style="grid-template-columns:repeat(3,1fr)">
+            <div class="fg"><label>N° Cotización</label><input id="fId" readonly></div>
+            <div class="fg"><label>Formato</label>
+              <select id="fFormat" onchange="onFormatChange()">
+                <option value="general">General</option>
+                <option value="estandar">Estándar</option>
+              </select>
+            </div>
+            <div class="fg"><label>Estado</label>
+              <select id="fStatus">
+                <option value="draft">Borrador</option>
+                <option value="sent">Enviada</option>
+                <option value="approved">Aprobada</option>
+                <option value="rejected">Rechazada</option>
+              </select>
+            </div>
+            <div class="fg"><label>Fecha</label><input type="date" id="fDate"></div>
+            <div class="fg"><label>Validez (días)</label><input type="number" id="fValidityDays" min="1" value="30"></div>
+            <div class="fg"><label>T. Pago</label><input id="fPago" placeholder="Contado / 50%-50%"></div>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <div class="form-card-title">Datos del cliente</div>
+          <div class="form-grid" style="grid-template-columns:repeat(3,1fr)">
+            <div class="fg" style="grid-column:1/3"><label>Nombre / Empresa</label><input id="fCName" placeholder="Prenseable · Hans Goecke"></div>
+            <div class="fg"><label>RUT</label><input id="fCRut" placeholder="12.345.678-9"></div>
+            <div class="fg" style="grid-column:1/3"><label>Dirección</label><input id="fCAddress" placeholder="Av. Américo Vespucio 107, Las Condes"></div>
+            <div class="fg"><label>Ciudad</label><input id="fCity" placeholder="Santiago"></div>
+            <div class="fg"><label>Teléfono</label><input id="fCPhone" placeholder="+56 9 …"></div>
+            <div class="fg"><label>Email</label><input id="fCEmail" placeholder="cliente@email.cl"></div>
+            <div class="fg" style="grid-column:1/3"><label>Proyecto / Descripción</label><input id="fProject" placeholder="Remodelación de Oficina — Av. Américo Vespucio 107"></div>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <div class="form-card-title">Partidas e ítems</div>
+          <div style="margin-bottom:1rem">
+            <div class="form-grid" style="grid-template-columns:repeat(4,1fr)">
+              <div class="fg"><label>Descuento (%)</label><input type="number" id="fDiscount" min="0" max="100" value="0" step="0.5" oninput="recalc()"></div>
+              <div class="fg" id="ggField" style="display:none"><label>Gastos Generales (%)</label><input type="number" id="fGG" min="0" max="100" value="12" step="0.5" oninput="recalc()"></div>
+              <div class="fg" id="utilField" style="display:none"><label>Utilidades (%)</label><input type="number" id="fUtil" min="0" max="100" value="13" step="0.5" oninput="recalc()"></div>
+            </div>
+          </div>
+          <div class="sections-wrap" id="sectionsWrap"></div>
+          <div style="margin-top:.75rem">
+            <button class="btn btn-sm" onclick="addSection()">＋ Agregar partida</button>
+          </div>
+          <div class="totals-area" id="totalsArea"></div>
+        </div>
+
+        <div class="form-card">
+          <div class="form-card-title">Nota / Condiciones</div>
+          <div class="fg"><textarea id="fTerms" rows="2"></textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-settings">
+      <div class="topbar">
+        <div class="topbar-title">Configuración</div>
+        <div class="actions"><button class="btn btn-primary" onclick="saveSettings()">✓ Guardar cambios</button></div>
+      </div>
+      <div class="content">
+        <div class="form-card">
+          <div class="form-card-title">Datos de la empresa</div>
+          <div class="form-grid" style="grid-template-columns:repeat(3,1fr)">
+            <div class="fg" style="grid-column:1/3"><label>Nombre empresa</label><input id="sName" placeholder="Pro Build"></div>
+            <div class="fg"><label>RUT empresa</label><input id="sRut" placeholder="76.543.210-5"></div>
+            <div class="fg full"><label>Giro / Actividad</label><input id="sGiro" placeholder="Construcción · Obras Civiles · Remodelaciones"></div>
+            <div class="fg full"><label>Dirección</label><input id="sAddress" placeholder="La Capitanía 80, of. 108, Las Condes"></div>
+            <div class="fg"><label>Teléfono</label><input id="sPhone" placeholder="+56 9 6667 0165"></div>
+            <div class="fg"><label>Email</label><input id="sEmail" placeholder="hola@probuild.cl"></div>
+            <div class="fg"><label>Ciudad</label><input id="sCity" placeholder="Santiago"></div>
+            <div class="fg"><label>Correlativo inicial</label><input id="sStartNum" type="number" value="1" min="1"></div>
+          </div>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Logo de empresa</div>
+          <div class="logo-zone" onclick="document.getElementById('logoInput').click()">
+            <div style="font-size:32px;margin-bottom:8px">🖼</div>
+            Haz clic para subir tu logo (PNG, JPG, WEBP)
+            <br><img id="logoPreview" style="display:none;max-height:64px;margin-top:12px;border-radius:6px">
+          </div>
+          <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogo(this)">
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="document.getElementById('logoInput').click()">↑ Cambiar logo</button>
+            <button class="btn btn-sm btn-danger" id="removeLgoBtn" style="display:none" onclick="removeLogo()">✕ Quitar logo</button>
+          </div>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Nota por defecto</div>
+          <div class="fg"><textarea id="sTerms" rows="3" placeholder="* Los precios incluyen mano de obra, materiales, traslados y gestión de escombros."></textarea></div>
+        </div>
+        <div class="form-card">
+          <div class="form-card-title">Valores por defecto — Formato Estándar</div>
+          <div class="form-grid" style="grid-template-columns:repeat(4,1fr)">
+            <div class="fg"><label>Gastos Generales (%)</label><input id="sDefGG" type="number" value="12" min="0" step="0.5"></div>
+            <div class="fg"><label>Utilidades (%)</label><input id="sDefUtil" type="number" value="13" min="0" step="0.5"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const S = {
+  quotes: [],
+  cfg: {
+    name: 'Pro Build', rut: '76.543.210-5',
+    giro: 'Construcción · Obras Civiles · Remodelaciones',
+    address: 'La Capitanía 80, of. 108, Las Condes',
+    phone: '+56 9 6667 0165', email: 'hola@probuild.cl',
+    city: 'Santiago', startNum: 1,
+    logo: null, logoW: 200, logoH: 80,
+    terms: '* Los precios incluyen mano de obra, materiales, traslados y gestión de escombros.',
+    defGG: 12, defUtil: 13
+  },
+  editing: null
+};
+
+const UNITS = ['Gl', 'Mt²', 'Ml', 'Un', 'Kg', 'm³'];
+
+function goto(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+  const nav = document.getElementById('nav-' + screen);
+  if (nav) nav.classList.add('active');
+  if (screen === 'dashboard') renderDash();
+  if (screen === 'history') renderHistory();
+  if (screen === 'settings') loadCfg();
+}
+
+function startNew() { S.editing = null; goto('new'); initForm(null); }
+
+function nextId() {
+  const yr = new Date().getFullYear();
+  const used = S.quotes.map(q => q.id);
+  let n = S.cfg.startNum;
+  while (used.includes(`COT-${yr}-${pad(n)}`)) n++;
+  return `COT-${yr}-${pad(n)}`;
+}
+function pad(n) { return String(n).padStart(4, '0'); }
+function today() { return new Date().toISOString().slice(0, 10); }
+function addDays(d, n) { const dt = new Date(d); dt.setDate(dt.getDate() + n); return dt.toISOString().slice(0, 10); }
+
+function initForm(id) {
+  let q;
+  if (id) {
+    q = S.quotes.find(x => x.id === id);
+    document.getElementById('formTitle').textContent = 'Editar cotización';
+  } else {
+    q = {
+      id: nextId(), format: 'general', date: today(), validityDays: 30,
+      status: 'draft', discount: 0, gg: S.cfg.defGG, util: S.cfg.defUtil, pago: 'Contado',
+      client: { name: '', rut: '', phone: '', email: '', address: '' },
+      project: '', city: '', terms: S.cfg.terms,
+      sections: [
+        { name: '', items: [{ desc: '', detail: '', unit: 'Gl', qty: 1, price: 0 }] }
+      ]
+    };
+    document.getElementById('formTitle').textContent = 'Nueva cotización';
+  }
+  sv('fId', q.id); sv('fFormat', q.format); sv('fDate', q.date); sv('fValidityDays', q.validityDays ?? 30);
+  sv('fStatus', q.status); sv('fDiscount', q.discount || 0);
+  sv('fGG', q.gg ?? S.cfg.defGG); sv('fUtil', q.util ?? S.cfg.defUtil);
+  sv('fPago', q.pago || ''); sv('fCName', q.client.name); sv('fCRut', q.client.rut);
+  sv('fCPhone', q.client.phone); sv('fCEmail', q.client.email); sv('fCAddress', q.client.address);
+  sv('fProject', q.project); sv('fCity', q.city); sv('fTerms', q.terms);
+  applyFormat(q.format);
+  renderSections(q.sections, q.format);
+  recalc();
+}
+
+function onFormatChange() {
+  const fmt = gv('fFormat');
+  applyFormat(fmt);
+  renderSections(getCurrentSections(), fmt);
+  recalc();
+}
+
+function applyFormat(fmt) {
+  const isE = fmt === 'estandar';
+  document.getElementById('ggField').style.display = isE ? '' : 'none';
+  document.getElementById('utilField').style.display = isE ? '' : 'none';
+}
+
+function renderSections(sections, fmt) {
+  const wrap = document.getElementById('sectionsWrap');
+  wrap.innerHTML = '';
+  sections.forEach((sec, idx) => wrap.appendChild(buildSectionBlock(sec, idx + 1, fmt)));
+}
+
+function buildSectionBlock(sec, num, fmt) {
+  fmt = fmt || gv('fFormat');
+  const block = document.createElement('div');
+  block.className = 'section-block';
+  block.dataset.kind = 'section';
+
+  const head = document.createElement('div');
+  head.className = 'section-head';
+  head.innerHTML = `<span class="section-num">${num}</span>
+    <input class="section-name-input" value="${esc(sec.name)}" placeholder="Partida">
+    <button class="section-del" title="Eliminar partida" onclick="this.closest('.section-block').remove(); renumberSections(); recalc();">✕</button>`;
+  block.appendChild(head);
+
+  const table = document.createElement('table');
+  table.className = 'items-tbl';
+  const isE = fmt === 'estandar';
+  table.innerHTML = isE
+    ? `<thead><tr><th style="width:46%">Descripción</th><th style="width:10%">Unidad</th><th style="width:10%">Cantidad</th><th style="width:17%">Vr. Unitario</th><th style="width:17%">Vr. Total</th><th style="width:4%"></th></tr></thead><tbody></tbody>`
+    : `<thead><tr><th style="width:30%">Descripción</th><th style="width:28%">Detalle</th><th style="width:8%">Un.</th><th style="width:8%">Cant.</th><th style="width:13%">Vr. Unitario</th><th style="width:13%">Vr. Total</th><th style="width:4%"></th></tr></thead><tbody></tbody>`;
+  block.appendChild(table);
+
+  const tbody = table.querySelector('tbody');
+  (sec.items || []).forEach(it => tbody.appendChild(buildItemRow(it, fmt)));
+
+  const addRow = document.createElement('div');
+  addRow.className = 'add-item-row';
+  addRow.innerHTML = `<button class="add-item-link" onclick="addItemToSection(this)">＋ Agregar ítem</button>`;
+  block.appendChild(addRow);
+
+  // Per-section subtotal — visible in Estándar format to mirror the PDF,
+  // which shows "Subtotal partida" under every section.
+  const subRow = document.createElement('div');
+  subRow.className = 'section-subtotal';
+  subRow.style.display = isE ? 'flex' : 'none';
+  subRow.innerHTML = `<span class="section-subtotal-label">Subtotal partida</span><span class="section-subtotal-val">$0</span>`;
+  block.appendChild(subRow);
+
+  return block;
+}
+
+
+function buildItemRow(it, fmt) {
+  it = it || { desc: '', detail: '', unit: 'Gl', qty: 1, price: 0 };
+  const tr = document.createElement('tr');
+  tr.dataset.kind = 'item';
+  const sub = (it.qty || 0) * (it.price || 0);
+  const unitOpts = UNITS.map(u => `<option${u === it.unit ? ' selected' : ''}>${u}</option>`).join('');
+  if (fmt === 'estandar') {
+    tr.innerHTML = `
+      <td><input class="i-desc" value="${esc(it.desc)}" placeholder="Descripción" style="width:100%"></td>
+      <td><select class="i-unit" onchange="recalc()" style="width:100%">${unitOpts}</select></td>
+      <td><input class="i-qty" type="number" value="${it.qty || 1}" min="0" step="0.01" oninput="recalc(this.closest('tr'))" style="width:100%;text-align:right"></td>
+      <td><input class="i-price" type="number" value="${it.price || 0}" min="0" step="1000" oninput="recalc(this.closest('tr'))" style="width:100%;text-align:right"></td>
+      <td class="i-sub" style="font-weight:600;text-align:right;white-space:nowrap;padding-right:6px">${clp(sub)}</td>
+      <td><button class="item-del" onclick="this.closest('tr').remove(); recalc();" title="Eliminar">✕</button></td>`;
+  } else {
+    tr.innerHTML = `
+      <td><input class="i-desc" value="${esc(it.desc)}" placeholder="Descripción" style="width:100%"></td>
+      <td><input class="i-detail" value="${esc(it.detail || '')}" placeholder="Detalle" style="width:100%"></td>
+      <td><select class="i-unit" onchange="recalc()" style="width:100%">${unitOpts}</select></td>
+      <td><input class="i-qty" type="number" value="${it.qty || 1}" min="0" step="0.01" oninput="recalc(this.closest('tr'))" style="width:100%;text-align:right"></td>
+      <td><input class="i-price" type="number" value="${it.price || 0}" min="0" step="1000" oninput="recalc(this.closest('tr'))" style="width:100%;text-align:right"></td>
+      <td class="i-sub" style="font-weight:600;text-align:right;white-space:nowrap;padding-right:6px">${clp(sub)}</td>
+      <td><button class="item-del" onclick="this.closest('tr').remove(); recalc();" title="Eliminar">✕</button></td>`;
+  }
+  return tr;
+}
+
+function addItemToSection(btn) {
+  const block = btn.closest('.section-block');
+  const tbody = block.querySelector('tbody');
+  tbody.appendChild(buildItemRow(null, gv('fFormat')));
+}
+
+function addSection() {
+  const wrap = document.getElementById('sectionsWrap');
+  const num = wrap.children.length + 1;
+  wrap.appendChild(buildSectionBlock({ name: '', items: [{ desc: '', detail: '', unit: 'Gl', qty: 1, price: 0 }] }, num, gv('fFormat')));
+}
+
+function renumberSections() {
+  document.querySelectorAll('#sectionsWrap .section-block .section-num').forEach((el, i) => {
+    el.textContent = i + 1;
+  });
+}
+
+function getCurrentSections() {
+  const out = [];
+  document.querySelectorAll('#sectionsWrap .section-block').forEach(block => {
+    const name = block.querySelector('.section-name-input').value;
+    const items = [];
+    block.querySelectorAll('tbody tr').forEach(row => {
+      const detailEl = row.querySelector('.i-detail');
+      items.push({
+        desc: row.querySelector('.i-desc').value,
+        detail: detailEl ? detailEl.value : '',
+        unit: row.querySelector('.i-unit').value,
+        qty: parseFloat(row.querySelector('.i-qty').value) || 0,
+        price: parseFloat(row.querySelector('.i-price').value) || 0
+      });
+    });
+    out.push({ name, items });
+  });
+  return out;
+}
+
+// recalc() has two modes:
+//  - recalc(rowEl): fast path. Updates only the edited row's subtotal and its
+//    own section's cached subtotal, then sums the (cheap) per-section cache
+//    for the grand total. Used on every keystroke so large quotes (100+
+//    items) stay responsive instead of re-scanning every row each time.
+//  - recalc(): full path. Re-scans everything. Used after structural changes
+//    (add/remove item or section, switch format) where the fast path can't apply.
+function recalc(changedRow) {
+  const fmt = gv('fFormat');
+  let grandSub = 0;
+
+  if (changedRow) {
+    const block = changedRow.closest('.section-block');
+    const q2 = parseFloat(changedRow.querySelector('.i-qty').value) || 0;
+    const p = parseFloat(changedRow.querySelector('.i-price').value) || 0;
+    const s = q2 * p;
+    changedRow.querySelector('.i-sub').textContent = clp(s);
+    changedRow.dataset.rowSub = s;
+
+    // Re-sum just this section from its rows' cached values (cheap: one section's rows)
+    let secSub = 0;
+    block.querySelectorAll('tbody tr').forEach(row => {
+      secSub += row === changedRow ? s : (parseFloat(row.dataset.rowSub) || 0);
+    });
+    block.dataset.secSub = secSub;
+    const subEl = block.querySelector('.section-subtotal-val');
+    if (subEl) subEl.textContent = clp(secSub);
+
+    // Grand total = sum of cached per-section subtotals (cheap: few sections)
+    document.querySelectorAll('#sectionsWrap .section-block').forEach(b => {
+      grandSub += parseFloat(b.dataset.secSub) || 0;
+    });
+  } else {
+    // Full recompute — used after add/remove row, add/remove section, or format switch
+    document.querySelectorAll('#sectionsWrap .section-block').forEach(block => {
+      let secSub = 0;
+      block.querySelectorAll('tbody tr').forEach(row => {
+        const q2 = parseFloat(row.querySelector('.i-qty').value) || 0;
+        const p = parseFloat(row.querySelector('.i-price').value) || 0;
+        const s = q2 * p;
+        row.dataset.rowSub = s;
+        secSub += s;
+        row.querySelector('.i-sub').textContent = clp(s);
+      });
+      block.dataset.secSub = secSub;
+      const subEl = block.querySelector('.section-subtotal-val');
+      if (subEl) subEl.textContent = clp(secSub);
+      grandSub += secSub;
+    });
+  }
+
+  const disc = parseFloat(gv('fDiscount')) || 0;
+  const da = grandSub * disc / 100;
+  const subD = grandSub - da;
+  const area = document.getElementById('totalsArea');
+
+  if (fmt === 'estandar') {
+    const gg = parseFloat(gv('fGG')) || 0;
+    const util = parseFloat(gv('fUtil')) || 0;
+    const ggAmt = subD * gg / 100;
+    const utilAmt = (subD + ggAmt) * util / 100;
+    const neto = subD + ggAmt + utilAmt;
+    const iva = neto * 0.19;
+    const tot = neto + iva;
+    area.innerHTML = `
+      <div class="trow"><span class="tlabel">Subtotal</span><span class="tval">${clp(grandSub)}</span></div>
+      ${disc > 0 ? `<div class="trow discount"><span class="tlabel">Descuento (${disc}%)</span><span class="tval">-${clp(da)}</span></div>` : ''}
+      <div class="trow"><span class="tlabel">Gastos Generales (${gg}%)</span><span class="tval">${clp(ggAmt)}</span></div>
+      <div class="trow"><span class="tlabel">Utilidades (${util}%)</span><span class="tval">${clp(utilAmt)}</span></div>
+      <div class="trow neto"><span class="tlabel">Valor Neto</span><span class="tval">${clp(neto)}</span></div>
+      <div class="trow"><span class="tlabel">IVA (19%)</span><span class="tval">${clp(iva)}</span></div>
+      <div class="trow grand"><span class="tlabel">VALOR TOTAL</span><span class="tval">${clp(tot)}</span></div>`;
+  } else {
+    const iva = subD * 0.19;
+    const tot = subD + iva;
+    area.innerHTML = `
+      <div class="trow"><span class="tlabel">Subtotal</span><span class="tval">${clp(grandSub)}</span></div>
+      ${disc > 0 ? `<div class="trow discount"><span class="tlabel">Descuento (${disc}%)</span><span class="tval">-${clp(da)}</span></div>
+      <div class="trow neto"><span class="tlabel">Valor Neto</span><span class="tval">${clp(subD)}</span></div>` : ''}
+      <div class="trow"><span class="tlabel">IVA (19%)</span><span class="tval">${clp(iva)}</span></div>
+      <div class="trow grand"><span class="tlabel">TOTAL</span><span class="tval">${clp(tot)}</span></div>`;
+  }
+}
+
+function calcTotals(q) {
+  let sub = 0;
+  (q.sections || []).forEach(sec => (sec.items || []).forEach(i => { sub += (i.qty || 0) * (i.price || 0); }));
+  const disc = q.discount || 0;
+  const da = sub * disc / 100;
+  const subAfterDisc = sub - da;
+  if (q.format === 'estandar') {
+    const gg = q.gg || 0, util = q.util || 0;
+    const ggAmt = subAfterDisc * gg / 100;
+    const utilAmt = (subAfterDisc + ggAmt) * util / 100;
+    const neto = subAfterDisc + ggAmt + utilAmt;
+    const iva = neto * 0.19;
+    return { sub, disc, da, subAfterDisc, gg, ggAmt, util, utilAmt, neto, iva, tot: neto + iva };
+  } else {
+    const neto = subAfterDisc;
+    const iva = neto * 0.19;
+    return { sub, disc, da, neto, iva, tot: neto + iva };
+  }
+}
+
+function getForm() {
+  return {
+    id: gv('fId'), format: gv('fFormat'), date: gv('fDate'), validityDays: parseInt(gv('fValidityDays')) || 30,
+    status: gv('fStatus'), discount: parseFloat(gv('fDiscount')) || 0,
+    gg: parseFloat(gv('fGG')) || 0, util: parseFloat(gv('fUtil')) || 0,
+    pago: gv('fPago'),
+    client: { name: gv('fCName'), rut: gv('fCRut'), phone: gv('fCPhone'), email: gv('fCEmail'), address: gv('fCAddress') },
+    project: gv('fProject'), city: gv('fCity'), terms: gv('fTerms'),
+    sections: getCurrentSections()
+  };
+}
+
+function saveDraft() {
+  const q = getForm();
+  const idx = S.quotes.findIndex(x => x.id === q.id);
+  if (idx >= 0) S.quotes[idx] = q; else S.quotes.unshift(q);
+  S.editing = q.id;
+  toast('Cotización guardada ✓');
+}
+
+function renderDash() {
+  const qs = S.quotes;
+  const appr = qs.filter(q => q.status === 'approved');
+  const pend = qs.filter(q => q.status === 'sent');
+  const rev = appr.reduce((a, q) => a + calcTotals(q).tot, 0);
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Total cotizaciones</div><div class="stat-value">${qs.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Pendientes</div><div class="stat-value">${pend.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Aprobadas</div><div class="stat-value">${appr.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Ingresos aprobados</div><div class="stat-value">${clp(rev)}</div></div>`;
+  const tb = document.getElementById('dashTbody');
+  tb.innerHTML = qs.slice(0, 8).map(q => qRow(q, true)).join('') ||
+    '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--muted)">Sin cotizaciones aún.</td></tr>';
+}
+
+function renderHistory() {
+  const tb = document.getElementById('histTbody');
+  const em = document.getElementById('histEmpty');
+  if (!S.quotes.length) { tb.innerHTML = ''; em.style.display = 'block'; return; }
+  em.style.display = 'none';
+  tb.innerHTML = S.quotes.map(q => qRow(q, false)).join('');
+}
+
+const BADGE = { draft: 'badge-draft', sent: 'badge-sent', approved: 'badge-approved', rejected: 'badge-rejected' };
+const LABEL = { draft: 'Borrador', sent: 'Enviada', approved: 'Aprobada', rejected: 'Rechazada' };
+const FMT_LABEL = { general: '<span style="color:#1d4ed8;font-size:11px;font-weight:700">General</span>', estandar: '<span style="color:#15803d;font-size:11px;font-weight:700">Estándar</span>' };
+
+function qRow(q, dash) {
+  const t = calcTotals(q);
+  if (dash) return `<tr onclick="editQ('${q.id}')">
+    <td class="cot-id">${q.id}</td>
+    <td>${esc(q.client.name || '—')}</td>
+    <td style="color:var(--muted);font-size:12px">${esc(q.project || '—')}</td>
+    <td style="color:var(--muted);font-size:12px">${q.date}</td>
+    <td style="font-weight:700">${clp(t.tot)}</td>
+    <td><span class="badge ${BADGE[q.status]}">${LABEL[q.status]}</span></td>
+    <td onclick="event.stopPropagation()" style="white-space:nowrap">
+      <button class="btn btn-sm" onclick="editQ('${q.id}')">✏</button>
+      <button class="btn btn-sm" style="margin-left:4px" onclick="pdfById('${q.id}')">📄</button>
+    </td></tr>`;
+  return `<tr onclick="editQ('${q.id}')">
+    <td class="cot-id">${q.id}</td>
+    <td>${FMT_LABEL[q.format] || q.format}</td>
+    <td>${esc(q.client.name || '—')}</td>
+    <td style="color:var(--muted);font-size:12px">${esc(q.project || '—')}</td>
+    <td style="color:var(--muted);font-size:12px">${q.date}</td>
+    <td style="font-weight:700">${clp(t.tot)}</td>
+    <td><span class="badge ${BADGE[q.status]}">${LABEL[q.status]}</span></td>
+    <td onclick="event.stopPropagation()" style="white-space:nowrap">
+      <button class="btn btn-sm" onclick="editQ('${q.id}')">✏ Editar</button>
+      <button class="btn btn-sm" style="margin-left:4px" onclick="pdfById('${q.id}')">📄 PDF</button>
+      <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="delQ('${q.id}')">✕</button>
+    </td></tr>`;
+}
+
+function editQ(id) { S.editing = id; goto('new'); initForm(id); }
+function delQ(id) { if (!confirm('¿Eliminar?')) return; S.quotes = S.quotes.filter(q => q.id !== id); renderDash(); renderHistory(); }
+
+function loadCfg() {
+  const c = S.cfg;
+  sv('sName', c.name); sv('sRut', c.rut); sv('sGiro', c.giro); sv('sAddress', c.address);
+  sv('sPhone', c.phone); sv('sEmail', c.email); sv('sCity', c.city);
+  sv('sStartNum', c.startNum); sv('sTerms', c.terms);
+  sv('sDefGG', c.defGG); sv('sDefUtil', c.defUtil);
+  const lp = document.getElementById('logoPreview');
+  const rb = document.getElementById('removeLgoBtn');
+  if (c.logo) { lp.src = c.logo; lp.style.display = 'inline-block'; rb.style.display = ''; }
+  else { lp.src = ''; lp.style.display = 'none'; rb.style.display = 'none'; }
+}
+function saveSettings() {
+  S.cfg.name = gv('sName'); S.cfg.rut = gv('sRut'); S.cfg.giro = gv('sGiro');
+  S.cfg.address = gv('sAddress'); S.cfg.phone = gv('sPhone'); S.cfg.email = gv('sEmail');
+  S.cfg.city = gv('sCity'); S.cfg.startNum = parseInt(gv('sStartNum')) || 1;
+  S.cfg.terms = gv('sTerms'); S.cfg.defGG = parseFloat(gv('sDefGG')) || 12;
+  S.cfg.defUtil = parseFloat(gv('sDefUtil')) || 13;
+  document.getElementById('sidebarName').textContent = S.cfg.name || 'Pro Build';
+  document.getElementById('sidebarGiro').textContent = S.cfg.giro || 'Cotizaciones';
+  toast('Configuración guardada ✓');
+}
+
+function handleLogo(inp) {
+  const f = inp.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const pngDataUrl = canvas.toDataURL('image/png');
+      S.cfg.logo = pngDataUrl;
+      S.cfg.logoW = img.naturalWidth;
+      S.cfg.logoH = img.naturalHeight;
+      const p = document.getElementById('logoPreview');
+      p.src = pngDataUrl; p.style.display = 'inline-block';
+      document.getElementById('removeLgoBtn').style.display = '';
+      toast('Logo cargado ✓');
+    };
+    img.onerror = () => toast('No se pudo leer la imagen del logo');
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(f);
+}
+function removeLogo() {
+  S.cfg.logo = null; S.cfg.logoW = 200; S.cfg.logoH = 80;
+  const p = document.getElementById('logoPreview'); p.src = ''; p.style.display = 'none';
+  document.getElementById('removeLgoBtn').style.display = 'none';
+  document.getElementById('logoInput').value = '';
+}
+
+function addLogoToPDF(doc, dataUrl, x, y, maxW, maxH) {
+  if (!dataUrl) return false;
+  try {
+    const nw = S.cfg.logoW || 200;
+    const nh = S.cfg.logoH || 80;
+    const ratio = nw / nh;
+    let w = maxW, h = maxW / ratio;
+    if (h > maxH) { h = maxH; w = maxH * ratio; }
+    doc.addImage(dataUrl, 'PNG', x, y, Math.round(w * 10) / 10, Math.round(h * 10) / 10);
+    return true;
+  } catch (e) { console.warn('logo render err', e); return false; }
+}
+
+function doGeneratePDF() { saveDraft(); buildPDF(getForm()); }
+function pdfById(id) { const q = S.quotes.find(x => x.id === id); if (q) buildPDF(q); }
+
+function buildPDF(q) {
+  if (!window.jspdf) { toast('Cargando generador de PDF…'); setTimeout(() => buildPDF(q), 800); return; }
+  if (q.format === 'estandar') buildPDFestandar(q);
+  else buildPDFgeneral(q);
+}
+
+function drawCleanHeader(doc, q, c, M, W) {
+  const INK = [25, 28, 32], MUTED = [110, 116, 122];
+  const txt = (text, x, y, o = {}) => {
+    doc.setFontSize(o.sz || 9);
+    doc.setFont('helvetica', o.b ? 'bold' : 'normal');
+    doc.setTextColor(...(o.col || INK));
+    doc.text(String(text ?? ''), x, y, { align: o.al || 'left', maxWidth: o.mw });
+  };
+  let y = M;
+
+  // Logo gets its own reserved zone (max 40w x 14h) so it never overlaps the
+  // giro/contact lines below, regardless of the logo's aspect ratio.
+  let textTop = y + 6;
+  if (c.logo) {
+    const placed = addLogoToPDF(doc, c.logo, M, y - 2, 40, 14);
+    if (placed) textTop = y + 19; // push company text below the reserved logo zone
+    else txt(c.name || 'Pro Build', M, textTop, { sz: 16, b: true, col: INK });
+  } else {
+    txt(c.name || 'Pro Build', M, textTop, { sz: 16, b: true, col: INK });
+  }
+  txt(c.giro || '', M, textTop + (c.logo ? 0 : 6), { sz: 8.5, col: MUTED });
+  txt([c.address, c.phone, c.email].filter(Boolean).join('   ·   '), M, textTop + (c.logo ? 5.5 : 12), { sz: 8, col: MUTED, mw: 120 });
+
+  txt('COTIZACIÓN', W - M, y + 6, { sz: 15, b: true, al: 'right', col: INK });
+  txt(q.id, W - M, y + 12, { sz: 9, al: 'right', col: MUTED });
+  txt(`Fecha: ${fmtDate(q.date)}`, W - M, y + 17.5, { sz: 8, al: 'right', col: MUTED });
+  txt(`Validez: ${q.validityDays || 30} días`, W - M, y + 22.5, { sz: 8, al: 'right', col: MUTED });
+
+  y += 28;
+  doc.setDrawColor(210, 213, 217); doc.setLineWidth(0.6);
+  doc.line(M, y, W - M, y);
+  return y + 8;
+}
+
+
+function drawClientBlock(doc, q, M, W, y) {
+  const INK = [25, 28, 32], MUTED = [110, 116, 122];
+  const txt = (text, x, yy, o = {}) => {
+    doc.setFontSize(o.sz || 9);
+    doc.setFont('helvetica', o.b ? 'bold' : 'normal');
+    doc.setTextColor(...(o.col || INK));
+    doc.text(String(text ?? ''), x, yy, { align: o.al || 'left', maxWidth: o.mw });
+  };
+  const colR = W - M - 60;
+  txt('CLIENTE', M, y, { sz: 7.5, b: true, col: MUTED });
+  txt(q.client.name || '—', M, y + 6, { sz: 11, b: true, col: INK });
+  txt(`RUT: ${q.client.rut || '—'}`, M, y + 11.5, { sz: 8.5, col: MUTED });
+  txt(`Dirección: ${q.client.address || '—'}`, M, y + 16.5, { sz: 8.5, col: MUTED, mw: 95 });
+  if (q.project) txt(`Proyecto: ${q.project}`, M, y + 21.5, { sz: 8.5, col: MUTED, mw: 95 });
+
+  txt(`Tel.: ${q.client.phone || '—'}`, colR, y + 6, { sz: 8.5, al: 'left', col: MUTED });
+  txt(`Email: ${q.client.email || '—'}`, colR, y + 11.5, { sz: 8.5, al: 'left', col: MUTED });
+  txt(`Ciudad: ${q.city || '—'}`, colR, y + 16.5, { sz: 8.5, al: 'left', col: MUTED });
+  txt(`T. Pago: ${q.pago || '—'}`, colR, y + 21.5, { sz: 8.5, al: 'left', col: MUTED });
+
+  return y + 30;
+}
+
+function drawTermsAndFooter(doc, q, y, M, W) {
+  const MUTED = [130, 135, 140];
+  if (q.terms) {
+    if (y > 270) { doc.addPage(); y = 16; }
+    doc.setDrawColor(225, 228, 231); doc.setLineWidth(0.4);
+    doc.line(M, y, W - M, y);
+    y += 6;
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MUTED);
+    const lines = doc.splitTextToSize(q.terms, W - M * 2);
+    doc.text(lines.slice(0, 3), M, y);
+  }
+  const np = doc.getNumberOfPages();
+  for (let i = 1; i <= np; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(160, 165, 170);
+    doc.text(`${q.id}   ·   ${S.cfg.name || 'Pro Build'}   ·   ${q.date}`, W / 2, 290, { align: 'center' });
+    if (np > 1) doc.text(`Pág. ${i} / ${np}`, W - M, 290, { align: 'right' });
+  }
+}
+
+function buildPDFgeneral(q) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const c = S.cfg, t = calcTotals(q);
+  const W = 210, M = 16;
+  const INK = [25, 28, 32], MUTED = [110, 116, 122];
+
+  const txt = (text, x, yy, o = {}) => {
+    doc.setFontSize(o.sz || 9);
+    doc.setFont('helvetica', o.b ? 'bold' : 'normal');
+    doc.setTextColor(...(o.col || INK));
+    doc.text(String(text ?? ''), x, yy, { align: o.al || 'left', maxWidth: o.mw });
+  };
+  const hline = (yy, x1 = M, x2 = W - M, col = [228, 231, 234]) => {
+    doc.setDrawColor(...col); doc.setLineWidth(0.3); doc.line(x1, yy, x2, yy);
+  };
+
+  let y = drawCleanHeader(doc, q, c, M, W);
+  y = drawClientBlock(doc, q, M, W, y);
+  y += 4;
+
+  // Columns sum exactly to the printable width (178mm). Numeric columns
+  // are right-aligned at their right edge; Descripción/Detalle are left-aligned.
+  const descW = 56, detailW = 40, unitW = 14, qtyW = 18, priceW = 26, totalW = 24;
+  const descX = M;
+  const detailX = descX + descW;
+  const unitX = detailX + detailW + unitW;
+  const qtyX = unitX + qtyW;
+  const priceX = qtyX + priceW;
+  const totalX = priceX + totalW;
+
+  // Header 8pt: ascender=2.03mm, descender=0.62mm
+  const GH_ASC = 2.03, GH_DESC = 0.62;
+  const ghTextY = y + 2.0 + GH_ASC;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...MUTED);
+  doc.text('Descripción', descX, ghTextY, { align: 'left' });
+  doc.text('Detalle', detailX, ghTextY, { align: 'left' });
+  doc.text('Un.', unitX, ghTextY, { align: 'right' });
+  doc.text('Cant.', qtyX, ghTextY, { align: 'right' });
+  doc.text('Vr. Unitario', priceX, ghTextY, { align: 'right' });
+  doc.text('Vr. Total', totalX, ghTextY, { align: 'right' });
+  y += 2.0 + GH_ASC + GH_DESC + 1.5;
+  hline(y, M, W - M, [180, 184, 188]);
+
+  // 8.5pt item font metrics (pt→mm ×0.3528):
+  // ascender=2.16mm, descender=0.66mm, pad=2mm, gap=1.5mm → lineH=6.32mm
+  const G_ASC = 2.16, G_DESC = 0.66, G_PAD = 2.0, G_GAP = 1.5;
+  const gLineH = G_PAD + G_ASC + G_DESC + G_GAP;
+
+  let secNum = 0;
+  q.sections.forEach(sec => {
+    secNum++;
+    if (y > 255) { doc.addPage(); y = 16; }
+
+    // Section name: 9.5pt, ascender=2.40mm
+    const SN_ASC = 9.5 * 0.72 * 0.3528;
+    const snTextY = y + 2.0 + SN_ASC;
+    txt(`${secNum}. ${sec.name || 'Partida'}`, M, snTextY, { sz: 9.5, b: true, col: INK });
+    y += 2.0 + SN_ASC + (9.5 * 0.22 * 0.3528) + 2.0; // pad below section name
+
+    sec.items.forEach(it => {
+      if (y > 263) { doc.addPage(); y = 16; }
+      const sub = (it.qty || 0) * (it.price || 0);
+      doc.setFontSize(8.5);
+      const dL = doc.splitTextToSize(String(it.desc || ''), descW - 2).length;
+      doc.setFontSize(7.5);
+      const dtL = doc.splitTextToSize(String(it.detail || ''), detailW - 2).length;
+      const rowH = Math.max(dL, dtL) * gLineH;
+      const textY = y + G_PAD + G_ASC;
+
+      doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...INK);
+      doc.text(String(it.desc || ''), descX, textY, { maxWidth: descW - 2 });
+      doc.setFontSize(7.8); doc.setTextColor(...MUTED);
+      doc.text(String(it.detail || ''), detailX, textY, { maxWidth: detailW - 2 });
+      txt(it.unit || '', unitX, textY, { sz: 8, al: 'right' });
+      txt(nfmt(it.qty || 0), qtyX, textY, { sz: 8, al: 'right' });
+      txt(clp(it.price || 0), priceX, textY, { sz: 8, al: 'right' });
+      txt(clp(sub), totalX, textY, { sz: 8.5, b: true, al: 'right' });
+      y += rowH;
+      hline(y, M, W - M, [210, 213, 217]);
+    });
+    y += 4; // breathing room between sections
+  });
+
+  y += 2;
+  hline(y, M, W - M, [180, 184, 188]);
+  y += 6;
+
+  const TX = W - M - 70;
+  const rows = [['Subtotal', t.sub, false]];
+  if (t.disc > 0) { rows.push([`Descuento (${t.disc}%)`, t.da, true]); rows.push(['Valor Neto', t.neto, false]); }
+  rows.push(['IVA (19%)', t.iva, false]);
+
+  // Reserve the whole totals block (all rows + TOTAL line) as one unit so it
+  // never gets cut across a page boundary — check fit BEFORE drawing any of it.
+  const totalsBlockH = rows.length * 6.5 + 14;
+  if (y + totalsBlockH > 282) { doc.addPage(); y = 16; }
+
+  rows.forEach(([lab, val, neg]) => {
+    txt(lab, TX, y, { sz: 9, col: MUTED });
+    txt((neg ? '-' : '') + clp(val), W - M, y, { sz: 9, al: 'right', col: neg ? [180, 40, 30] : INK });
+    y += 6.5;
+  });
+
+  hline(y - 3, TX, W - M, [60, 64, 68]);
+  txt('TOTAL', TX, y + 3, { sz: 12, b: true, col: INK });
+  txt(clp(t.tot), W - M, y + 3, { sz: 12, b: true, al: 'right', col: INK });
+  y += 14;
+
+  drawTermsAndFooter(doc, q, y, M, W);
+  doc.save(pdfName(q));
+  toast(`PDF generado: ${pdfName(q)}`);
+}
+
+function buildPDFestandar(q) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const c = S.cfg, t = calcTotals(q);
+  const W = 210, M = 16;
+  const INK = [25, 28, 32], MUTED = [110, 116, 122];
+
+  const txt = (text, x, yy, o = {}) => {
+    doc.setFontSize(o.sz || 9);
+    doc.setFont('helvetica', o.b ? 'bold' : 'normal');
+    doc.setTextColor(...(o.col || INK));
+    doc.text(String(text ?? ''), x, yy, { align: o.al || 'left', maxWidth: o.mw });
+  };
+  const hline = (yy, x1 = M, x2 = W - M, col = [228, 231, 234]) => {
+    doc.setDrawColor(...col); doc.setLineWidth(0.3); doc.line(x1, yy, x2, yy);
+  };
+
+  let y = drawCleanHeader(doc, q, c, M, W);
+  y = drawClientBlock(doc, q, M, W, y);
+  y += 4;
+
+  // Columns sum exactly to the printable width (W - 2M = 178mm here).
+  // Each column's x marks its RIGHT edge for numeric columns (right-aligned),
+  // and its LEFT edge for the description column.
+  const descW = 88, unitW = 20, qtyW = 22, priceW = 26, totalW = 22;
+  const descX = M;
+  const unitX = descX + descW + unitW;
+  const qtyX = unitX + qtyW;
+  const priceX = qtyX + priceW;
+  const totalX = priceX + totalW;
+
+  let secNum = 0;
+  q.sections.forEach(sec => {
+    secNum++;
+    if (y > 250) { doc.addPage(); y = 16; }
+
+    txt(`${secNum}. ${sec.name || 'Partida'}`, M, y, { sz: 10, b: true, col: INK });
+    y += 5;
+    hline(y, M, W - M, [220, 224, 228]);
+    y += 5;
+
+    // Header uses 8pt: ascender=8*0.72*0.3528=2.03mm, descender=8*0.22*0.3528=0.62mm
+    const H_ASC = 2.03, H_DESC = 0.62;
+    const headTextY = y + 2.0 + H_ASC;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...MUTED);
+    doc.text('Descripción', descX, headTextY, { align: 'left' });
+    doc.text('Unidad', unitX, headTextY, { align: 'right' });
+    doc.text('Cantidad', qtyX, headTextY, { align: 'right' });
+    doc.text('Vr. Unitario', priceX, headTextY, { align: 'right' });
+    doc.text('Vr. Total', totalX, headTextY, { align: 'right' });
+    y += 2.0 + H_ASC + H_DESC + 1.5; // same rhythm as item rows
+    hline(y, M, W - M, [200, 204, 208]);
+
+    let secSub = 0;
+    sec.items.forEach(it => {
+      if (y > 263) { doc.addPage(); y = 16; }
+      const sub = (it.qty || 0) * (it.price || 0);
+      secSub += sub;
+      doc.setFontSize(9);
+      const dL = doc.splitTextToSize(String(it.desc || ''), descW - 2).length;
+      // Font metrics for 9pt Helvetica in jsPDF (pt→mm = ×0.3528):
+      // Ascender above baseline = 2.29mm, Descender below = 0.70mm
+      // Row: [divider] → 2mm pad → text baseline → 0.70mm desc → 1.5mm gap → [divider]
+      // textBaseline = y + 2 + 2.29 = y + 4.3
+      // nextDivider  = textBaseline + 0.70 + 1.5 = textBaseline + 2.2
+      const ASCENDER = 2.29, DESCENDER = 0.70, PAD = 2.0, GAP = 1.5;
+      const lineH = PAD + ASCENDER + DESCENDER + GAP; // 6.5mm per line
+      const textY = y + PAD + ASCENDER;
+      const rowH = dL * lineH;
+
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(...INK);
+      doc.text(String(it.desc || ''), descX, textY, { maxWidth: descW - 2 });
+      txt(it.unit || '', unitX, textY, { sz: 9, al: 'right' });
+      txt(nfmt(it.qty || 0), qtyX, textY, { sz: 9, al: 'right' });
+      txt(clp(it.price || 0), priceX, textY, { sz: 9, al: 'right' });
+      txt(clp(sub), totalX, textY, { sz: 9, b: true, al: 'right' });
+      y += rowH;
+      hline(y, M, W - M, [210, 213, 217]);
+    });
+
+    if (y > 268) { doc.addPage(); y = 16; }
+    y += 5;
+    txt('Subtotal partida', priceX, y, { sz: 8.5, al: 'right', col: MUTED });
+    txt(clp(secSub), totalX, y, { sz: 9, b: true, al: 'right', col: INK });
+    y += 8;
+  });
+
+  hline(y - 3, M, W - M, [180, 184, 188]);
+  y += 4;
+
+  const TX2 = M + 96;
+  const resRows = [
+    ['Subtotal', t.sub, false, false],
+    ...(t.disc > 0 ? [[`Descuento (${t.disc}%)`, t.da, false, true]] : []),
+    [`Gastos Generales (${t.gg}%)`, t.ggAmt, false, false],
+    [`Utilidades (${t.util}%)`, t.utilAmt, false, false],
+    ['Valor Neto', t.neto, true, false],
+    ['IVA (19%)', t.iva, false, false],
+  ];
+
+  // Reserve the whole resumen block (all rows + VALOR TOTAL line) as one unit
+  // so it never gets cut across a page boundary — check fit BEFORE drawing.
+  const resBlockH = resRows.length * 6.5 + 14;
+  if (y + resBlockH > 282) { doc.addPage(); y = 16; }
+
+  resRows.forEach(([lab, val, bold, isDisc]) => {
+    txt(lab, TX2, y, { sz: 9.5, b: bold, col: bold ? INK : MUTED });
+    const valStr = isDisc ? '-' + clp(val) : clp(val);
+    txt(valStr, W - M, y, { sz: 9.5, b: bold, al: 'right', col: isDisc ? [180, 40, 30] : INK });
+    y += 6.5;
+    if (bold) hline(y - 4.5, TX2, W - M, [200, 204, 208]);
+  });
+
+  hline(y - 3, TX2, W - M, [60, 64, 68]);
+  txt('VALOR TOTAL', TX2, y + 3, { sz: 11.5, b: true, col: INK });
+  txt(clp(t.tot), W - M, y + 3, { sz: 11.5, b: true, al: 'right', col: INK });
+  y += 14;
+
+  drawTermsAndFooter(doc, q, y, M, W);
+  doc.save(pdfName(q));
+  toast(`PDF generado: ${pdfName(q)}`);
+}
+
+function clp(n) { return '$' + Math.round(Math.abs(n)).toLocaleString('es-CL'); }
+function nfmt(n) { return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, ''); }
+function fmtDate(d) {
+  if (!d) return '—';
+  const [yr, mo, dy] = d.split('-');
+  const MO = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return `${parseInt(dy)} de ${MO[parseInt(mo) - 1]} de ${yr}`;
+}
+function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+function sv(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ''; }
+function gv(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function pdfName(q) { return `${q.id}-${(q.client.name || 'cotizacion').replace(/\s+/g, '_').slice(0, 30)}.pdf`; }
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(t._tid); t._tid = setTimeout(() => t.style.opacity = '0', 2800);
+}
+
+renderDash();
+</script>
+</body>
+</html>
